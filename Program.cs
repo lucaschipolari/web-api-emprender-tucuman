@@ -47,6 +47,7 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddScoped<JwtService>();
 builder.Services.AddScoped<PublicacionRepository>();
 builder.Services.AddScoped<UsuarioRepository>();
+builder.Services.AddScoped<CategoriaRepository>();
 builder.Services.AddSingleton<S3Service>();
 
 
