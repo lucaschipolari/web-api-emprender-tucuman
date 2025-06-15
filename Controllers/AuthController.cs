@@ -5,6 +5,7 @@ using EmprenderTucumanWebApi.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using EmprenderTucumanWebApi.API;
+using EmprenderTucumanWebApi.Interfaces.Repositories;
 
 namespace EmprenderTucumanWebApi.Controllers
 {
@@ -12,12 +13,12 @@ namespace EmprenderTucumanWebApi.Controllers
     [Route("api/[controller]")]
     public class AuthController : ControllerBase
     {
-        private readonly DBemprendedoresContext _context;
+        private readonly IUsuarioRepository _userRepository;
         private readonly JwtService _jwtService;
 
-        public AuthController(DBemprendedoresContext context, JwtService jwtService)
+        public AuthController(IUsuarioRepository context, JwtService jwtService)
         {
-            _context = context;
+            _userRepository = context;
             _jwtService = jwtService;
         }
 
@@ -26,7 +27,7 @@ namespace EmprenderTucumanWebApi.Controllers
         {
             try
             {
-                var user = await _context.Usuarios
+                var user = await _userRepository
                     .FirstOrDefaultAsync(u => u.Email == loginDto.Email && u.PasswordHash == loginDto.Password);
 
                 if (user == null)
@@ -48,7 +49,8 @@ namespace EmprenderTucumanWebApi.Controllers
         {
             try
             {
-                var existingUser = await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == registerDto.Email);
+                var existingUser = await _userRepository.FirstOrDefaultAsync(u => u.Email == registerDto.Email);
+
 
                 if (existingUser != null)
                 {
@@ -62,8 +64,7 @@ namespace EmprenderTucumanWebApi.Controllers
                     PasswordHash = registerDto.Password
                 };
 
-                _context.Usuarios.Add(newUser);
-                await _context.SaveChangesAsync();
+               await _userRepository.AddAsync(newUser);
 
                 var token = _jwtService.GenerateToken(newUser);
 

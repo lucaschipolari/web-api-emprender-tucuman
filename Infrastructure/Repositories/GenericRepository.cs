@@ -10,12 +10,12 @@ namespace EmprenderTucumanWebApi.Infrastructure.Repositories
     public abstract class GenericRepository<TEntity> : IRepository<TEntity> where TEntity : class
     {
         protected readonly DBemprendedoresContext _context;
-        protected readonly DbSet<TEntity> _dbSet; // Para interactuar con el DbSet específico de la entidad
+        protected readonly DbSet<TEntity> _dbSet; 
 
         public GenericRepository(DBemprendedoresContext context)
         {
             _context = context;
-            _dbSet = _context.Set<TEntity>(); // Obtiene el DbSet correcto para TEntity
+            _dbSet = _context.Set<TEntity>(); 
         }
 
         public virtual async Task<TEntity?> GetByIdAsync(int id)
@@ -57,5 +57,6 @@ namespace EmprenderTucumanWebApi.Infrastructure.Repositories
             return await _dbSet.AnyAsync(e => EF.Property<int>(e, "Id") == id); 
             
         }
+       
     }
 }

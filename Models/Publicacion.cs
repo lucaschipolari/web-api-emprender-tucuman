@@ -23,6 +23,9 @@ public partial class Publicacion
 
     public decimal? PrecioOferta { get; set; }
 
+    public bool Eliminada { get; set; } = false;
+
+
     public string? UrlImagenPrincipal { get; set; }
 
     public bool? Activa { get; set; }
