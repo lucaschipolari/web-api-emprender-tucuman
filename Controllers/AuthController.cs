@@ -57,7 +57,7 @@ namespace EmprenderTucumanWebApi.Controllers
 
                 var newUser = new Usuario
                 {
-                    Nombre = registerDto.Nombre,
+                    NombreUsuario = registerDto.Nombre,
                     Email = registerDto.Email,
                     PasswordHash = registerDto.Password
                 };
