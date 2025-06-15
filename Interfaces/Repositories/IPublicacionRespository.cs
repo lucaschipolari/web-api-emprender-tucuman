@@ -6,5 +6,7 @@ namespace EmprenderTucumanWebApi.Interfaces.Repositories
     {
         Task<IEnumerable<Publicacion>> GetPublicacionRangeAsync(decimal precioMinimo, decimal precioMaximo);
 
+        Task<IEnumerable<Publicacion>> GetPublicacionesSinPausar();
+
     }
 }

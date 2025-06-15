@@ -17,20 +17,23 @@ namespace EmprenderTucumanWebApi.Controllers
     {
         private readonly PublicacionRepository _publicacionRepository;
         private readonly UsuarioRepository _usuarioRepository;
+        private readonly CalificacionRepository _calificacionRepository;
         private readonly JwtService _jwtService;
 
         public PublicacionController(
             PublicacionRepository publicacionRepository,
             UsuarioRepository usuarioRepository,
+            CalificacionRepository calificacionRepository,
             JwtService jwtService)
         {
             _publicacionRepository = publicacionRepository;
             _usuarioRepository = usuarioRepository;
+            _calificacionRepository = calificacionRepository;
             _jwtService = jwtService;
         }
 
-        [HttpGet("publicaciones")]
-        public async Task<IActionResult> ObtenerPublicaciones()
+        [HttpGet("publicaciones/emprendedor")]
+        public async Task<IActionResult> ObtenerPublicacionesPorEmprendedor()
         {
             try
             {
@@ -41,21 +44,88 @@ namespace EmprenderTucumanWebApi.Controllers
                     return NotFound(ApiResponse<string>.CreateNotFound("Publicaciones no encontradas"));
                 }
 
-                var publicacionesDto = publicaciones.Where(p => p.Eliminada==false).Select(p => new PublicacionResponseDto
+                var publicacionesDto = new List<PublicacionResponseDto>();
+
+                foreach (var p in publicaciones.Where(p => p.Eliminada == false))
                 {
-                    Id = p.Id,
-                    Titulo = p.Nombre,
-                    Descripcion = p.Descripcion,
-                    Precio = p.Precio,
-                    PrecioOferta = p.PrecioOferta,
-                    EstaEnOferta = p.EstaEnOferta ?? false,
-                    CantidadDisponible = p.CantidadDisponible,
-                    Activa = p.Activa ?? true,
-                    UrlImagenPrincipal = p.UrlImagenPrincipal,
-                    FechaPublicacion = p.FechaPublicacion,
-                    CategoriaId = p.CategoriaId,
-                    ComentariosCantidad = p.Comentarios?.Count ?? 0
-                }).ToList();
+                    var calificacionPromedio = await _calificacionRepository.ObtenerPromedioPorPublicacionIdAsync(p.Id);
+
+                    publicacionesDto.Add(new PublicacionResponseDto
+                    {
+                        Id = p.Id,
+                        Titulo = p.Nombre,
+                        Descripcion = p.Descripcion,
+                        Precio = p.Precio,
+                        PrecioOferta = p.PrecioOferta,
+                        EstaEnOferta = p.EstaEnOferta ?? false,
+                        CantidadDisponible = p.CantidadDisponible,
+                        Activa = p.Activa ?? true,
+                        UrlImagenPrincipal = p.UrlImagenPrincipal,
+                        FechaPublicacion = p.FechaPublicacion,
+                        CategoriaId = p.CategoriaId,
+                        ComentariosCantidad = p.Comentarios?.Count ?? 0,
+                        CalificacionPromedio = calificacionPromedio,
+                        Emprendedor = p.Usuario!= null
+                            ? new EmprendedorResponseDto
+                            {
+                                Id = p.Usuario.Id,
+                                Nombre = p.Usuario.Nombre,
+                                Imagen = p.Usuario.ImagenPerfil
+                            }
+                            : null
+                    });
+                }
+
+                return Ok(ApiResponse<List<PublicacionResponseDto>>.CreateSuccess(publicacionesDto, "Publicaciones obtenidas correctamente"));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ApiResponse<string>.CreateError("Error interno al obtener las publicaciones: " + ex.Message));
+            }
+        }
+
+        [HttpGet("publicaciones")]
+        public async Task<IActionResult> ObtenerPublicacionesSinPausar()
+        {
+            try
+            {
+                var publicaciones = await _publicacionRepository.GetPublicacionesSinPausar();
+                if (publicaciones == null || !publicaciones.Any())
+                {
+                    return NotFound(ApiResponse<string>.CreateNotFound("Publicaciones no encontradas"));
+                }
+
+                var publicacionesDto = new List<PublicacionResponseDto>();
+
+                foreach (var p in publicaciones.Where(p => p.Eliminada == false))
+                {
+                    var calificacionPromedio = await _calificacionRepository.ObtenerPromedioPorPublicacionIdAsync(p.Id);
+
+                    publicacionesDto.Add(new PublicacionResponseDto
+                    {
+                        Id = p.Id,
+                        Titulo = p.Nombre,
+                        Descripcion = p.Descripcion,
+                        Precio = p.Precio,
+                        PrecioOferta = p.PrecioOferta,
+                        EstaEnOferta = p.EstaEnOferta ?? false,
+                        CantidadDisponible = p.CantidadDisponible,
+                        Activa = p.Activa ?? true,
+                        UrlImagenPrincipal = p.UrlImagenPrincipal,
+                        FechaPublicacion = p.FechaPublicacion,
+                        CategoriaId = p.CategoriaId,
+                        ComentariosCantidad = p.Comentarios?.Count ?? 0,
+                        CalificacionPromedio = calificacionPromedio,
+                        Emprendedor = p.Usuario != null
+                            ? new EmprendedorResponseDto
+                            {
+                                Id = p.Usuario.Id,
+                                Nombre = p.Usuario.Nombre,
+                                Imagen = p.Usuario.ImagenPerfil
+                            }
+                            : null
+                    });
+                }
 
                 return Ok(ApiResponse<List<PublicacionResponseDto>>.CreateSuccess(publicacionesDto, "Publicaciones obtenidas correctamente"));
             }
@@ -89,7 +159,7 @@ namespace EmprenderTucumanWebApi.Controllers
                     UsuarioId = 2, // O usuario.Id si tomás el usuario logueado
                     CategoriaId = dto.CategoriaId,
                     Activa = true,
-                    Eliminada = true,
+                    Eliminada = false,
                 };
 
                 await _publicacionRepository.AddAsync(nuevaPublicacion);

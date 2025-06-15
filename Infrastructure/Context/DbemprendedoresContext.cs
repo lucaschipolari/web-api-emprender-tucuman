@@ -170,6 +170,8 @@ public partial class DBemprendedoresContext : DbContext
 
             entity.HasIndex(e => e.Nombre, "UQ__Roles__75E3EFCF31C5EC91").IsUnique();
 
+            entity.Property(e => e.Descripcion).HasMaxLength(200);
+            entity.Property(e => e.Nivel).HasDefaultValue(1);
             entity.Property(e => e.Nombre)
                 .HasMaxLength(50)
                 .IsUnicode(false);
@@ -198,6 +200,9 @@ public partial class DBemprendedoresContext : DbContext
             entity.Property(e => e.FechaRegistro)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
+            entity.Property(e => e.ImagenPerfil)
+                .HasMaxLength(255)
+                .IsUnicode(false);
             entity.Property(e => e.Nombre)
                 .HasMaxLength(50)
                 .IsUnicode(false);
@@ -207,9 +212,15 @@ public partial class DBemprendedoresContext : DbContext
             entity.Property(e => e.PasswordHash)
                 .HasMaxLength(255)
                 .IsUnicode(false);
+            entity.Property(e => e.RolId).HasDefaultValue(1);
             entity.Property(e => e.Telefono)
                 .HasMaxLength(20)
                 .IsUnicode(false);
+
+            entity.HasOne(d => d.Rol).WithMany(p => p.Usuarios)
+                .HasForeignKey(d => d.RolId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_Usuario_Rol");
 
             entity.HasMany(d => d.Publicacions).WithMany(p => p.Usuarios)
                 .UsingEntity<Dictionary<string, object>>(
@@ -226,21 +237,6 @@ public partial class DBemprendedoresContext : DbContext
                     {
                         j.HasKey("UsuarioId", "PublicacionId").HasName("PK__Favorito__9A3016E098F5126E");
                         j.ToTable("Favoritos");
-                    });
-
-            entity.HasMany(d => d.Rols).WithMany(p => p.Usuarios)
-                .UsingEntity<Dictionary<string, object>>(
-                    "UsuarioRole",
-                    r => r.HasOne<Role>().WithMany()
-                        .HasForeignKey("RolId")
-                        .HasConstraintName("FK__UsuarioRo__RolId__797309D9"),
-                    l => l.HasOne<Usuario>().WithMany()
-                        .HasForeignKey("UsuarioId")
-                        .HasConstraintName("FK__UsuarioRo__Usuar__787EE5A0"),
-                    j =>
-                    {
-                        j.HasKey("UsuarioId", "RolId").HasName("PK__UsuarioR__24AFD797824DCE1E");
-                        j.ToTable("UsuarioRoles");
                     });
         });
 

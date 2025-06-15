@@ -2,7 +2,7 @@
 
 namespace EmprenderTucumanWebApi.Infrastructure.Repositories
 {
-    public class CategoriaRepository : GenericRepository<Categoria>
+    public class CategoriaRepository : GenericRepository<Categoria> 
     {
         public CategoriaRepository(DBemprendedoresContext context) : base(context)
         {
