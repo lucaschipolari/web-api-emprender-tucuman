@@ -8,45 +8,60 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 using EmprenderTucumanWebApi.Infrastructure.Repositories;
+using EmprenderTucumanWebApi.Interfaces.Repositories;
 
 namespace EmprenderTucumanWebApi.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+
     public class PublicacionController : ControllerBase
     {
         private readonly PublicacionRepository _publicacionRepository;
         private readonly UsuarioRepository _usuarioRepository;
         private readonly CalificacionRepository _calificacionRepository;
+        private readonly EmprendimientoRepository _emprendimientoRepository;
         private readonly JwtService _jwtService;
 
         public PublicacionController(
             PublicacionRepository publicacionRepository,
             UsuarioRepository usuarioRepository,
             CalificacionRepository calificacionRepository,
+            EmprendimientoRepository emprendimientoRepository,
             JwtService jwtService)
         {
             _publicacionRepository = publicacionRepository;
             _usuarioRepository = usuarioRepository;
             _calificacionRepository = calificacionRepository;
+            _emprendimientoRepository = emprendimientoRepository;
             _jwtService = jwtService;
         }
 
+        private async Task<Emprendimiento?> ObtenerEmprendimientoActualAsync()
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
+                return null;
+
+            return await _emprendimientoRepository.ObtenerPorUsuarioIdAsync(userId);
+        }
+
+
         [HttpGet("publicaciones/emprendedor")]
-        public async Task<IActionResult> ObtenerPublicacionesPorEmprendedor()
+        public async Task<IActionResult> ObtenerPublicacionesPorEmprendedor([FromQuery] int emprendimientoId)
         {
             try
             {
-                var publicaciones = await _publicacionRepository.GetAllAsync();
+                var publicaciones = await _publicacionRepository.GetPublicacionesActivasPorEmprendimientoAsync(emprendimientoId);
 
                 if (publicaciones == null || !publicaciones.Any())
                 {
-                    return NotFound(ApiResponse<string>.CreateNotFound("Publicaciones no encontradas"));
+                    return NotFound(ApiResponse<string>.CreateNotFound("No se encontraron publicaciones para este emprendimiento."));
                 }
 
                 var publicacionesDto = new List<PublicacionResponseDto>();
 
-                foreach (var p in publicaciones.Where(p => p.Eliminada == false))
+                foreach (var p in publicaciones)
                 {
                     var calificacionPromedio = await _calificacionRepository.ObtenerPromedioPorPublicacionIdAsync(p.Id);
 
@@ -65,18 +80,11 @@ namespace EmprenderTucumanWebApi.Controllers
                         CategoriaId = p.CategoriaId,
                         ComentariosCantidad = p.Comentarios?.Count ?? 0,
                         CalificacionPromedio = calificacionPromedio,
-                        Emprendedor = p.Usuario!= null
-                            ? new EmprendedorResponseDto
-                            {
-                                Id = p.Usuario.Id,
-                                Nombre = p.Usuario.Nombre,
-                                Imagen = p.Usuario.ImagenPerfil
-                            }
-                            : null
+                        Emprendedor =  null
                     });
                 }
 
-                return Ok(ApiResponse<List<PublicacionResponseDto>>.CreateSuccess(publicacionesDto, "Publicaciones obtenidas correctamente"));
+                return Ok(ApiResponse<List<PublicacionResponseDto>>.CreateSuccess(publicacionesDto, "Publicaciones del emprendedor obtenidas correctamente"));
             }
             catch (Exception ex)
             {
@@ -116,12 +124,20 @@ namespace EmprenderTucumanWebApi.Controllers
                         CategoriaId = p.CategoriaId,
                         ComentariosCantidad = p.Comentarios?.Count ?? 0,
                         CalificacionPromedio = calificacionPromedio,
-                        Emprendedor = p.Usuario != null
-                            ? new EmprendedorResponseDto
+
+                        Emprendedor = p.Emprendimiento != null
+                            ? new EmprendimientoResponseDto
                             {
-                                Id = p.Usuario.Id,
-                                Nombre = p.Usuario.Nombre,
-                                Imagen = p.Usuario.ImagenPerfil
+                                Id = p.Emprendimiento.Id,
+                                Nombre = p.Emprendimiento.Nombre,
+                                FotoPerfil = p.Emprendimiento.FotoPerfil ?? "", 
+                                Direccion = p.Emprendimiento.Direccion ?? "",
+                                Instagram = p.Emprendimiento.Instagram ?? "",
+                                Facebook = p.Emprendimiento.Facebook ?? "",
+                                WhatsApp = p.Emprendimiento.WhatsApp ?? "",
+                                Descripcion = p.Emprendimiento.Descripcion ?? "",
+                                NombreUsuario = p.Emprendimiento.Usuario?.Nombre ?? "",
+                                EmailUsuario = p.Emprendimiento.Usuario?.Email ?? ""
                             }
                             : null
                     });
@@ -134,17 +150,16 @@ namespace EmprenderTucumanWebApi.Controllers
                 return StatusCode(500, ApiResponse<string>.CreateError("Error interno al obtener las publicaciones: " + ex.Message));
             }
         }
-
+        
+        [Authorize(Policy = "Emprendedores")]
         [HttpPost("registrar")]
         public async Task<IActionResult> RegistrarPublicacion([FromBody] PublicacionRequestDto dto)
         {
             try
             {
-                // 🛡️ Si usás autenticación JWT, obtené el usuario desde el token:
-                // var emailUsuario = User.FindFirst(ClaimTypes.Email)?.Value;
-                // var usuario = await _usuarioRepository.ObtenerUsuarioPorMailAsync(emailUsuario);
-                // if (usuario == null)
-                //     return NotFound(ApiResponse<string>.CreateNotFound("Usuario no encontrado"));
+                var emprendimiento = await ObtenerEmprendimientoActualAsync();
+                if (emprendimiento == null)
+                    return NotFound(ApiResponse<string>.CreateNotFound("No se encontró un emprendimiento asociado a este usuario."));
 
                 var nuevaPublicacion = new Publicacion
                 {
@@ -156,14 +171,13 @@ namespace EmprenderTucumanWebApi.Controllers
                     CantidadDisponible = dto.CantidadDisponible,
                     FechaPublicacion = DateTime.Now,
                     UrlImagenPrincipal = dto.ImagenUrl,
-                    UsuarioId = 2, // O usuario.Id si tomás el usuario logueado
                     CategoriaId = dto.CategoriaId,
                     Activa = true,
                     Eliminada = false,
+                    EmprendimientoId = emprendimiento.Id
                 };
 
                 await _publicacionRepository.AddAsync(nuevaPublicacion);
-
                 return Ok(ApiResponse<string>.CreateSuccess("Publicación creada correctamente"));
             }
             catch (Exception ex)
@@ -172,6 +186,7 @@ namespace EmprenderTucumanWebApi.Controllers
             }
         }
 
+        [Authorize(Policy = "Emprendedores")]
         [HttpPut("pausar/{id}")]
         public async Task<IActionResult> PausarPublicacion(int id)
         {
@@ -179,9 +194,14 @@ namespace EmprenderTucumanWebApi.Controllers
             {
                 var publicacion = await _publicacionRepository.GetByIdAsync(id);
                 if (publicacion == null || publicacion.Eliminada == true)
-                {
-                    return NotFound(ApiResponse<string>.CreateNotFound("Publicación no encontrada"));
-                }
+                    return NotFound(ApiResponse<string>.CreateNotFound("Publicación no encontrada o eliminada"));
+
+                var emprendimiento = await ObtenerEmprendimientoActualAsync();
+                if (emprendimiento == null)
+                    return Unauthorized(ApiResponse<string>.CreateError("No tienes un emprendimiento asociado."));
+
+                if (publicacion.EmprendimientoId != emprendimiento.Id)
+                    return Unauthorized(ApiResponse<string>.CreateError("No tienes permiso para pausar esta publicación."));
 
                 publicacion.Activa = !(publicacion.Activa ?? true);
                 publicacion.UltimaActualizacion = DateTime.Now;
@@ -196,6 +216,8 @@ namespace EmprenderTucumanWebApi.Controllers
                 return StatusCode(500, ApiResponse<string>.CreateError("Error al pausar publicación: " + ex.Message));
             }
         }
+
+        [Authorize(Policy = "Emprendedores")]
         [HttpPut("eliminar/{id}")]
         public async Task<IActionResult> EliminarPublicacion(int id)
         {
@@ -203,9 +225,14 @@ namespace EmprenderTucumanWebApi.Controllers
             {
                 var publicacion = await _publicacionRepository.GetByIdAsync(id);
                 if (publicacion == null || publicacion.Eliminada == true)
-                {
                     return NotFound(ApiResponse<string>.CreateNotFound("Publicación no encontrada o ya eliminada"));
-                }
+
+                var emprendimiento = await ObtenerEmprendimientoActualAsync();
+                if (emprendimiento == null)
+                    return Unauthorized(ApiResponse<string>.CreateError("No tienes un emprendimiento asociado."));
+
+                if (publicacion.EmprendimientoId != emprendimiento.Id)
+                    return Unauthorized(ApiResponse<string>.CreateError("No tienes permiso para eliminar esta publicación."));
 
                 publicacion.Eliminada = true;
                 publicacion.UltimaActualizacion = DateTime.Now;
@@ -219,28 +246,96 @@ namespace EmprenderTucumanWebApi.Controllers
                 return StatusCode(500, ApiResponse<string>.CreateError("Error al eliminar publicación: " + ex.Message));
             }
         }
+
+        [Authorize(Policy = "Emprendedores")]
+        [HttpGet("mis-publicaciones")]
+        public async Task<IActionResult> ObtenerMisPublicaciones()
+        {
+            try
+            {
+                var emprendimiento = await ObtenerEmprendimientoActualAsync();
+                if (emprendimiento == null)
+                    return NotFound(ApiResponse<string>.CreateNotFound("No se encontró un emprendimiento asociado a este usuario."));
+
+                var publicaciones = await _publicacionRepository.GetByEmprendimientoIdAsync(emprendimiento.Id);
+
+                var publicacionesDto = new List<PublicacionResponseDto>();
+
+                foreach (var p in publicaciones.Where(p => p.Eliminada == false))
+                {
+                    var calificacionPromedio = await _calificacionRepository.ObtenerPromedioPorPublicacionIdAsync(p.Id);
+
+                    publicacionesDto.Add(new PublicacionResponseDto
+                    {
+                        Id = p.Id,
+                        Titulo = p.Nombre,
+                        Descripcion = p.Descripcion,
+                        Precio = p.Precio,
+                        PrecioOferta = p.PrecioOferta,
+                        EstaEnOferta = p.EstaEnOferta ?? false,
+                        CantidadDisponible = p.CantidadDisponible,
+                        Activa = p.Activa ?? true,
+                        UrlImagenPrincipal = p.UrlImagenPrincipal,
+                        FechaPublicacion = p.FechaPublicacion,
+                        CategoriaId = p.CategoriaId,
+                        ComentariosCantidad = p.Comentarios?.Count ?? 0,
+                        CalificacionPromedio = calificacionPromedio,
+
+                        Emprendedor = p.Emprendimiento != null
+                            ? new EmprendimientoResponseDto
+                            {
+                                Id = p.Emprendimiento.Id,
+                                Nombre = p.Emprendimiento.Nombre,
+                                FotoPerfil = p.Emprendimiento.FotoPerfil ?? "",
+                                Direccion = p.Emprendimiento.Direccion ?? "",
+                                Instagram = p.Emprendimiento.Instagram ?? "",
+                                Facebook = p.Emprendimiento.Facebook ?? "",
+                                WhatsApp = p.Emprendimiento.WhatsApp ?? "",
+                                Descripcion = p.Emprendimiento.Descripcion ?? "",
+                                NombreUsuario = p.Emprendimiento.Usuario?.Nombre ?? "",
+                                EmailUsuario = p.Emprendimiento.Usuario?.Email ?? ""
+                            }
+                            : null
+                    });
+                }
+
+                return Ok(ApiResponse<List<PublicacionResponseDto>>.CreateSuccess(publicacionesDto, "Publicaciones obtenidas correctamente"));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ApiResponse<string>.CreateError("Error al obtener publicaciones del emprendedor: " + ex.Message));
+            }
+        }
+
+        [Authorize(Policy = "Emprendedores")]
         [HttpPut("editar/{id}")]
         public async Task<IActionResult> EditarPublicacion(int id, [FromBody] PublicacionRequestDto dto)
         {
             try
             {
-                var publicacionExistente = await _publicacionRepository.GetByIdAsync(id);
-                if (publicacionExistente == null || publicacionExistente.Eliminada == true)
-                {
+                var publicacion = await _publicacionRepository.GetByIdAsync(id);
+                if (publicacion == null || publicacion.Eliminada == true)
                     return NotFound(ApiResponse<string>.CreateNotFound("Publicación no encontrada o eliminada"));
-                }
+
+                var emprendimiento = await ObtenerEmprendimientoActualAsync();
+                if (emprendimiento == null)
+                    return Unauthorized(ApiResponse<string>.CreateError("No tienes un emprendimiento asociado."));
+
+                if (publicacion.EmprendimientoId != emprendimiento.Id)
+                    return Unauthorized(ApiResponse<string>.CreateError("No tienes permiso para editar esta publicación."));
 
                 // Actualizar propiedades
-                publicacionExistente.Nombre = dto.Titulo;
-                publicacionExistente.Descripcion = dto.Descripcion;
-                publicacionExistente.Precio = dto.Precio;
-                publicacionExistente.UrlImagenPrincipal = dto.ImagenUrl;
-                publicacionExistente.EstaEnOferta = dto.EstaEnOferta;
-                publicacionExistente.PrecioOferta = dto.PrecioOferta;
-                publicacionExistente.CantidadDisponible = dto.CantidadDisponible;
-                // Agrega aquí todas las propiedades que quieras actualizar
+                publicacion.Nombre = dto.Titulo;
+                publicacion.Descripcion = dto.Descripcion;
+                publicacion.Precio = dto.Precio;
+                publicacion.CategoriaId = dto.CategoriaId;
+                publicacion.UrlImagenPrincipal = dto.ImagenUrl;
+                publicacion.EstaEnOferta = dto.EstaEnOferta;
+                publicacion.PrecioOferta = dto.PrecioOferta;
+                publicacion.CantidadDisponible = dto.CantidadDisponible;
+                publicacion.UltimaActualizacion = DateTime.Now;
 
-                await _publicacionRepository.UpdateAsync(publicacionExistente);
+                await _publicacionRepository.UpdateAsync(publicacion);
                 return Ok(ApiResponse<string>.CreateSuccess("Publicación editada correctamente"));
             }
             catch (Exception ex)

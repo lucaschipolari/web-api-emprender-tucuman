@@ -12,4 +12,5 @@ public partial class Categoria
     public string? Descripcion { get; set; }
 
     public virtual ICollection<Publicacion> Publicacions { get; set; } = new List<Publicacion>();
+    public virtual ICollection<Emprendimiento> Emprendimientos { get; set; } = new List<Emprendimiento>();
 }

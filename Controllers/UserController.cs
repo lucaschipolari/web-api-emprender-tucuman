@@ -44,7 +44,7 @@ namespace EmprenderTucumanWebApi.Controllers
                 {
                     Id = u.Id,
                     Email = u.Email,
-                    Nombre = u.Nombre,
+                    Nombre = u.NombreUsuario,
                     ImagenPerfil = u.ImagenPerfil,
                     RolId = u.RolId,
                     Activo = u.Activo,
@@ -57,8 +57,8 @@ namespace EmprenderTucumanWebApi.Controllers
                 return StatusCode(500, ApiResponse<string>.CreateError("Error interno al obtener los usuarios: " + ex.Message));
             }
         }
-      
 
+        [Authorize(Policy = "Administradores")]
         [HttpPut("usuarios/{id}/rol")]
         public async Task<IActionResult> CambiarRol(int id, [FromBody] CambiarRolDto dto)
         {
@@ -68,12 +68,10 @@ namespace EmprenderTucumanWebApi.Controllers
                 if (usuario == null)
                     return NotFound(ApiResponse<string>.CreateNotFound("Usuario no encontrado"));
 
-                // Validar que el rol exista
                 var rol = await _rolRepository.GetByIdAsync(dto.RolId);
                 if (rol == null || !rol.Activo)
                     return BadRequest(ApiResponse<string>.CreateError("Rol inválido"));
 
-                // ✅ Cambio simple: solo actualizar el RolId
                 usuario.RolId = dto.RolId;
                 await _usuarioRepository.UpdateAsync(usuario);
 
@@ -101,7 +99,7 @@ namespace EmprenderTucumanWebApi.Controllers
             }
         }
 
-        [Authorize]
+        [Authorize(Policy = "Administradores")]
         [HttpDelete("usuarios/{id}")]
         public async Task<IActionResult> DeleteUser(int id)
         {
@@ -123,7 +121,7 @@ namespace EmprenderTucumanWebApi.Controllers
                 return StatusCode(500, ApiResponse<string>.CreateError("Error interno al eliminar el usuario: " + ex.Message));
             }
         }
-        //[Authorize]
+        [Authorize(Policy = "Administradores")]
         [HttpPut("usuarios/{id}/desactivar")]
         public async Task<IActionResult> DesactivarUsuario(int id)
         {

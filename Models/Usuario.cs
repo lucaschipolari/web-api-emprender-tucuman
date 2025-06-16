@@ -26,10 +26,11 @@ public partial class Usuario
     public virtual ICollection<Comentario> Comentarios { get; set; } = new List<Comentario>();
     public virtual ICollection<Publicacion> PublicacionsNavigation { get; set; } = new List<Publicacion>();
     public virtual ICollection<Publicacion> Publicacions { get; set; } = new List<Publicacion>();
-    
+
+    public virtual ICollection<Emprendimiento> Emprendimientos { get; set; } = new List<Emprendimiento>();
     // ❌ REMOVER ESTA LÍNEA:
     // public virtual ICollection<Role> Rols { get; set; } = new List<Role>();
-    
+
     // ✅ Métodos de utilidad
     public string NombreCompleto => $"{Nombre} {Apellido}".Trim();
     

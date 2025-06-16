@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using EmprenderTucumanWebApi.API;
 using EmprenderTucumanWebApi.Interfaces.Repositories;
+using EmprenderTucumanWebApi.Infrastructure.Repositories;
 
 namespace EmprenderTucumanWebApi.Controllers
 {
@@ -15,11 +16,13 @@ namespace EmprenderTucumanWebApi.Controllers
     {
         private readonly IUsuarioRepository _userRepository;
         private readonly JwtService _jwtService;
+        private readonly IRolRepository _rolRepository;
 
-        public AuthController(IUsuarioRepository context, JwtService jwtService)
+        public AuthController(IUsuarioRepository context,IRolRepository rolRepository, JwtService jwtService)
         {
             _userRepository = context;
             _jwtService = jwtService;
+            _rolRepository = rolRepository;
         }
 
         [HttpPost("login")]
@@ -34,8 +37,10 @@ namespace EmprenderTucumanWebApi.Controllers
                 {
                     return Unauthorized(ApiResponse<string>.CreateError("Correo o contraseña incorrectas"));
                 }
+                if (user.Rol == null)
+                    throw new Exception("El rol no está cargado");
 
-                var token = _jwtService.GenerateToken(user);
+                var token = _jwtService.GenerateToken(user, user.Rol.Nivel);
                 return Ok(ApiResponse<string>.CreateSuccess(token, "Inicio de sesión exitoso"));
             }
             catch (Exception ex)
@@ -65,8 +70,13 @@ namespace EmprenderTucumanWebApi.Controllers
                 };
 
                await _userRepository.AddAsync(newUser);
+               
+                newUser.Rol = await _rolRepository.GetByIdAsync(newUser.RolId);
 
-                var token = _jwtService.GenerateToken(newUser);
+                if (newUser.Rol == null)
+                    throw new Exception("El rol no está cargado");
+
+                var token = _jwtService.GenerateToken(newUser,newUser.Rol.Nivel);
 
                 return Ok(ApiResponse<string>.CreateSuccess(token, "Usuario registrado con éxito"));
             }
