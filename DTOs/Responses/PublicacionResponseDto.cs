@@ -33,7 +33,7 @@ namespace EmprenderTucumanWebApi.DTOs.Responses
         public int CategoriaId { get; set; }
         public double? CalificacionPromedio { get; set; } 
         public int ComentariosCantidad { get; set; }
-        public EmprendedorResponseDto? Emprendedor { get; set; }
+        public EmprendimientoResponseDto? Emprendedor { get; set; }
 
     }
 

@@ -17,7 +17,7 @@ namespace EmprenderTucumanWebApi.Services
             _jwtSettings = jwtSettings.Value;
         }
 
-        public string GenerateToken(Usuario user)
+        public string GenerateToken(Usuario user,int nivel)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
             var key = Encoding.ASCII.GetBytes(_jwtSettings.Key);
@@ -28,7 +28,9 @@ namespace EmprenderTucumanWebApi.Services
                 {
                     new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                     new Claim(ClaimTypes.Name, user.NombreUsuario),
-                    new Claim(ClaimTypes.Email, user.Email)
+                    new Claim(ClaimTypes.Email, user.Email),
+                     new Claim("Nivel", nivel.ToString()),
+                     new Claim("RolId", user.RolId.ToString())
                 }),
                 Expires = DateTime.UtcNow.AddMinutes(_jwtSettings.ExpirationInMinutes),
                 Issuer = _jwtSettings.Issuer,

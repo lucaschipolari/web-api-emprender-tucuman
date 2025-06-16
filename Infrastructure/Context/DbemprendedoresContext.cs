@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using EmprenderTucumanWebApi.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace EmprenderTucumanWebApi.Models;
@@ -19,6 +20,7 @@ public partial class DBemprendedoresContext : DbContext
 
     public virtual DbSet<Caracteristica> Caracteristicas { get; set; }
 
+    public virtual DbSet<Emprendimiento> Emprendimientos { get; set; }
     public virtual DbSet<Categoria> Categorias { get; set; }
 
     public virtual DbSet<Comentario> Comentarios { get; set; }
@@ -109,6 +111,55 @@ public partial class DBemprendedoresContext : DbContext
                 .HasForeignKey(d => d.UsuarioId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__Comentari__Usuar__0E6E26BF");
+        });
+        modelBuilder.Entity<Emprendimiento>(entity =>
+        {
+            entity.ToTable("EMPRENDIMIENTO");
+
+            entity.HasIndex(e => e.CategoriaId, "IX_EMPRENDIMIENTO_CategoriaId");
+
+            entity.HasIndex(e => e.Nombre, "IX_EMPRENDIMIENTO_Nombre");
+
+            entity.HasIndex(e => e.UsuarioId, "IX_EMPRENDIMIENTO_UsuarioId");
+
+            entity.Property(e => e.Descripcion)
+                .HasMaxLength(1000)
+                .IsUnicode(false);
+            entity.Property(e => e.Direccion)
+                .HasMaxLength(500)
+                .IsUnicode(false);
+            entity.Property(e => e.Estado).HasDefaultValue(true);
+            entity.Property(e => e.Facebook)
+                .HasMaxLength(255)
+                .IsUnicode(false);
+            entity.Property(e => e.FechaCreacion)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.FotoPerfil)
+                .HasMaxLength(500)
+                .IsUnicode(false);
+            entity.Property(e => e.FotoPortada)
+                .HasMaxLength(500)
+                .IsUnicode(false);
+            entity.Property(e => e.Historia).HasColumnType("text");
+            entity.Property(e => e.Instagram)
+                .HasMaxLength(255)
+                .IsUnicode(false);
+            entity.Property(e => e.Nombre)
+                .HasMaxLength(255)
+                .IsUnicode(false);
+            entity.Property(e => e.WhatsApp)
+                .HasMaxLength(50)
+                .IsUnicode(false);
+
+            entity.HasOne(d => d.Categoria).WithMany(p => p.Emprendimientos)
+                .HasForeignKey(d => d.CategoriaId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_EMPRENDIMIENTO_CATEGORIA");
+
+            entity.HasOne(d => d.Usuario).WithMany(p => p.Emprendimientos)
+                .HasForeignKey(d => d.UsuarioId)
+                .HasConstraintName("FK_EMPRENDIMIENTO_USUARIO");
         });
 
         modelBuilder.Entity<Imagen>(entity =>

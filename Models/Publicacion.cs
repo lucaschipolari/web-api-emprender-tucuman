@@ -23,9 +23,6 @@ public partial class Publicacion
 
     public decimal? PrecioOferta { get; set; }
 
-    public bool Eliminada { get; set; } = false;
-
-
     public string? UrlImagenPrincipal { get; set; }
 
     public bool? Activa { get; set; }
@@ -34,6 +31,10 @@ public partial class Publicacion
 
     public DateTime? UltimaActualizacion { get; set; }
 
+    public bool Eliminada { get; set; }
+
+    public int? EmprendimientoId { get; set; }
+
     public virtual ICollection<Calificacion> Calificacions { get; set; } = new List<Calificacion>();
 
     public virtual ICollection<Caracteristica> Caracteristicas { get; set; } = new List<Caracteristica>();
@@ -41,6 +42,8 @@ public partial class Publicacion
     public virtual Categoria Categoria { get; set; } = null!;
 
     public virtual ICollection<Comentario> Comentarios { get; set; } = new List<Comentario>();
+
+    public virtual Emprendimiento? Emprendimiento { get; set; }
 
     public virtual ICollection<Imagen> Imagens { get; set; } = new List<Imagen>();
 
