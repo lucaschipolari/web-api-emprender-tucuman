@@ -8,5 +8,9 @@ namespace EmprenderTucumanWebApi.Interfaces.Repositories
 
         Task<IEnumerable<Publicacion>> GetPublicacionesSinPausar();
 
+        Task<IEnumerable<Publicacion>> GetByEmprendimientoIdAsync(int emprendimientoId);
+
+        Task<List<Publicacion>> GetPublicacionesActivasPorEmprendimientoAsync(int emprendimientoId);
+
     }
 }

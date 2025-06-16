@@ -31,7 +31,9 @@ namespace EmprenderTucumanWebApi.Infrastructure.Repositories
         }
         public async Task<Usuario?> FirstOrDefaultAsync(Expression<Func<Usuario, bool>> predicate)
         {
-            return await _context.Usuarios.FirstOrDefaultAsync(predicate);
+            return await _context.Usuarios
+                .Include(u => u.Rol)  // ✅ Agregar esta línea
+                .FirstOrDefaultAsync(predicate);
         }
 
 

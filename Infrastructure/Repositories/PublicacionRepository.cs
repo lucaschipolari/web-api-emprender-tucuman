@@ -18,10 +18,14 @@ namespace EmprenderTucumanWebApi.Infrastructure.Repositories
         }
         public async Task<IEnumerable<Publicacion>> GetPublicacionesSinPausar()
         {
-
-            return await _context.Publicacions.Where(p => p.Activa == true).ToListAsync();
-
+            return await _context.Publicacions
+                .Include(p => p.Emprendimiento)
+                    .ThenInclude(e => e.Usuario) 
+                .Include(p => p.Categoria) 
+                .Where(p => p.Activa == true && !p.Eliminada)
+                .ToListAsync();
         }
+
         public async Task<List<Publicacion>> GetAllAsync()
         {
             return await _context.Publicacions
@@ -29,6 +33,23 @@ namespace EmprenderTucumanWebApi.Infrastructure.Repositories
                 .Include(p => p.Categoria) // si también usás CategoriaNombre
                 .ToListAsync();
         }
-
+        public async Task<List<Publicacion>> GetPublicacionesActivasPorEmprendimientoAsync(int emprendimientoId)
+        {
+            return await _context.Publicacions
+                .Include(p => p.Emprendimiento)
+                    .ThenInclude(e => e.Usuario)
+                .Include(p => p.Categoria)
+                .Where(p => p.Activa == true && !p.Eliminada && p.EmprendimientoId == emprendimientoId)
+                .ToListAsync();
+        }
+        public async Task<IEnumerable<Publicacion>> GetByEmprendimientoIdAsync(int emprendimientoId)
+        {
+            return await _context.Publicacions
+                .Include(p => p.Emprendimiento)
+                    .ThenInclude(e => e.Usuario)
+                .Include(p => p.Comentarios)
+                .Where(p => p.EmprendimientoId == emprendimientoId)
+                .ToListAsync();
+        }
     }
 }

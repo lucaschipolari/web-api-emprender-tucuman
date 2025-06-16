@@ -47,6 +47,10 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddScoped<JwtService>();
 builder.Services.AddScoped<PublicacionRepository>();
 builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
+builder.Services.AddScoped<IRolRepository, RolRepository>();
+builder.Services.AddScoped<EmprendimientoRepository>();
+builder.Services.AddScoped<IEmprendimientoRepository,EmprendimientoRepository>();
+
 builder.Services.AddScoped<UsuarioRepository>();
 builder.Services.AddScoped<CategoriaRepository>();
 builder.Services.AddScoped<CalificacionRepository>();
@@ -67,6 +71,32 @@ builder.Services.AddCors(options =>
                   .AllowAnyMethod()
                   .AllowAnyHeader();
         });
+});
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("Administradores", policy =>
+        policy.RequireAssertion(context =>
+        {
+            var nivelClaim = context.User.FindFirst("Nivel");
+            if (nivelClaim == null) return false;
+
+            var nivel = int.Parse(nivelClaim.Value);
+            return nivel >= 3; 
+        }));
+});
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("Emprendedores", policy =>
+        policy.RequireAssertion(context =>
+        {
+            var nivelClaim = context.User.FindFirst("Nivel");
+            if (nivelClaim == null) return false;
+
+            var nivel = int.Parse(nivelClaim.Value);
+            return nivel >= 2;
+        }));
 });
 
 
